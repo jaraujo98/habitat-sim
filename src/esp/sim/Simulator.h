@@ -509,6 +509,12 @@ class Simulator {
   assets::MeshData::ptr getJoinedMesh(bool includeStaticObjects = false);
 
   /**
+   * @brief Get the vertices of all objects in the scene
+   * @return A std::vector with the vertices
+   */
+  std::vector<vec3f> getStageMesh();
+
+  /**
    * @brief Get the joined semantic mesh data for all objects in the scene
    * @param[out] objectIds will be populated with the object ids for the
    * semantic mesh

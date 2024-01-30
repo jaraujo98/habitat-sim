@@ -916,6 +916,11 @@ assets::MeshData::ptr Simulator::getJoinedMesh(
   return joinedMesh;
 }
 
+std::vector<vec3f> Simulator::getStageMesh() {
+  assets::MeshData::ptr joinedMesh = getJoinedMesh(true);
+  return joinedMesh->vbo;
+}
+
 assets::MeshData::ptr Simulator::getJoinedSemanticMesh(
     std::vector<std::uint16_t>& objectIds) {
   assets::MeshData::ptr joinedSemanticMesh = assets::MeshData::create();
