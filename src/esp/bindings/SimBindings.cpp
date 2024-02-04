@@ -362,8 +362,10 @@ void initSimBindings(py::module& m) {
            pybind11::return_value_policy::reference,
            R"(Get visualization helper for rendering lines.)")
       /* --- Pointclouds API --- */
-      .def("get_stage_mesh", &Simulator::getStageMesh,
-           R"(Get the stage mesh.)");
+      .def("get_stage_mesh_vertices", &Simulator::getStageMeshVerts,
+           R"(Get the stage mesh vertices.)")
+      .def("get_stage_mesh_face_idxs", &Simulator::getStageMeshFaceIdxs,
+           R"(Get the stage mesh face indices.)");
 
   // ==== ReplayRendererConfiguration ====
   py::class_<ReplayRendererConfiguration, ReplayRendererConfiguration::ptr>(

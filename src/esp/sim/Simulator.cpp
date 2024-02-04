@@ -916,9 +916,14 @@ assets::MeshData::ptr Simulator::getJoinedMesh(
   return joinedMesh;
 }
 
-std::vector<vec3f> Simulator::getStageMesh() {
+std::vector<vec3f> Simulator::getStageMeshVerts() {
   assets::MeshData::ptr joinedMesh = getJoinedMesh(true);
   return joinedMesh->vbo;
+}
+
+std::vector<uint32_t> Simulator::getStageMeshFaceIdxs() {
+  assets::MeshData::ptr joinedMesh = getJoinedMesh(true);
+  return joinedMesh->ibo;
 }
 
 assets::MeshData::ptr Simulator::getJoinedSemanticMesh(
