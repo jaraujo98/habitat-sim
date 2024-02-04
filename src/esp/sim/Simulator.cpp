@@ -921,9 +921,18 @@ std::vector<vec3f> Simulator::getStageMeshVerts() {
   return joinedMesh->vbo;
 }
 
-std::vector<uint32_t> Simulator::getStageMeshFaceIdxs() {
+std::vector<vec3ui> Simulator::getStageMeshFaceIdxs() {
   assets::MeshData::ptr joinedMesh = getJoinedMesh(true);
-  return joinedMesh->ibo;
+
+  // Array of vectors to store face vertices
+  std::vector<vec3ui> faceIdxs{};
+  for (size_t ix = 0; ix < joinedMesh->ibo.size() / 3; ++ix) {
+    vec3ui face{joinedMesh->ibo[3 * ix], joinedMesh->ibo[3 * ix + 1],
+                joinedMesh->ibo[3 * ix + 2]};
+    faceIdxs.push_back(face);
+  }
+
+  return faceIdxs;
 }
 
 assets::MeshData::ptr Simulator::getJoinedSemanticMesh(

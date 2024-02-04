@@ -9,10 +9,6 @@ EXAMPLES_DIR = pathlib.Path(__file__).parent
 DATA_DIR = EXAMPLES_DIR.parent.joinpath("data")
 
 
-def reshape_idx_list(idxs):
-    return [idxs[3 * i : 3 * (i + 1)] for i in range(len(idxs) // 3)]
-
-
 if __name__ == "__main__":
     default_sim_settings["scene"] = DATA_DIR.joinpath(
         "versioned_data", "habitat_test_scenes", "van-gogh-room.glb"
@@ -40,7 +36,7 @@ if __name__ == "__main__":
 
     # Get stage mesh
     verts = sim.get_stage_mesh_vertices()
-    faces = reshape_idx_list(sim.get_stage_mesh_face_idxs())
+    faces = sim.get_stage_mesh_face_idxs()
 
     mesh = trimesh.Trimesh(verts, faces)
 

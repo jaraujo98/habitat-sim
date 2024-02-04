@@ -518,7 +518,7 @@ class Simulator {
    * @brief Get the vertex indices of all faces of objects in the scene
    * @return A std::vector with the indices
    */
-  std::vector<uint32_t> getStageMeshFaceIdxs();
+  std::vector<vec3ui> getStageMeshFaceIdxs();
 
   /**
    * @brief Get the joined semantic mesh data for all objects in the scene
