@@ -935,6 +935,70 @@ std::vector<vec3ui> Simulator::getStageMeshFaceIdxs() {
   return faceIdxs;
 }
 
+std::vector<vec3f> Simulator::samplePointsFromFaces(size_t numPoints) {
+  std::vector<vec3f> sampledPoints;
+
+  // Step 1: Compute the area of each face
+  std::vector<vec3ui> faceIdxs = getStageMeshFaceIdxs();
+  std::vector<vec3f> vertices = getStageMeshVerts();
+
+  // Step 2: Normalize face areas to obtain probabilities
+  std::vector<float> probabilities;
+  float totalArea = 0.0f;
+  for (const auto& face : faceIdxs) {
+    vec3f v0 = vertices[face[0]];
+    vec3f v1 = vertices[face[1]];
+    vec3f v2 = vertices[face[2]];
+
+    // Compute the cross product of two edges to get the face normal
+    auto normal = (v1 - v0).cross(v2 - v0);
+
+    // Compute the area of the triangle (face)
+    float area = normal.norm() / 2.0f;
+
+    probabilities.push_back(area);
+    totalArea += area;
+  }
+
+  // Normalize the probabilities
+  for (float& prob : probabilities) {
+    prob /= totalArea;
+  }
+
+  // Step 3 and Step 4: Generate random numbers and sample points
+  for (int i = 0; i < numPoints; ++i) {
+    // Generate a random number between 0 and 1
+    float randNum = random_->uniform_float_01();
+
+    // Find the face corresponding to the generated random number
+    float cumulativeProbability = 0.0f;
+    size_t selectedFace = 0;
+    for (size_t j = 0; j < probabilities.size(); ++j) {
+      cumulativeProbability += probabilities[j];
+      if (randNum <= cumulativeProbability) {
+        selectedFace = j;
+        break;
+      }
+    }
+
+    // Sample a point on the selected face
+    vec3ui selectedFaceIndices = faceIdxs[selectedFace];
+    vec3f v0 = vertices[selectedFaceIndices[0]];
+    vec3f v1 = vertices[selectedFaceIndices[1]];
+    vec3f v2 = vertices[selectedFaceIndices[2]];
+
+    // Barycentric coordinates
+    float u = random_->uniform_float_01();
+    float v = (1.0f - u) * random_->uniform_float_01();
+
+    // Interpolate to get the sampled point
+    vec3f sampledPoint = (1.0f - u - v) * v0 + u * v1 + v * v2;
+    sampledPoints.push_back(sampledPoint);
+  }
+
+  return sampledPoints;
+}
+
 assets::MeshData::ptr Simulator::getJoinedSemanticMesh(
     std::vector<std::uint16_t>& objectIds) {
   assets::MeshData::ptr joinedSemanticMesh = assets::MeshData::create();

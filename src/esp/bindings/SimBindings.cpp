@@ -365,7 +365,10 @@ void initSimBindings(py::module& m) {
       .def("get_stage_mesh_vertices", &Simulator::getStageMeshVerts,
            R"(Get the stage mesh vertices.)")
       .def("get_stage_mesh_face_idxs", &Simulator::getStageMeshFaceIdxs,
-           R"(Get the stage mesh face indices.)");
+           R"(Get the stage mesh face indices.)")
+      .def("sample_points_from_stage", &Simulator::samplePointsFromFaces,
+           "num_points"_a = 1000,
+           R"(Sample points from the faces of the stage.)");
 
   // ==== ReplayRendererConfiguration ====
   py::class_<ReplayRendererConfiguration, ReplayRendererConfiguration::ptr>(

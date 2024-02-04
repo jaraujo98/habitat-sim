@@ -42,3 +42,11 @@ if __name__ == "__main__":
 
     with open(EXAMPLES_DIR.joinpath("tmesh.glb"), "wb") as f:
         mesh.export(f, file_type="glb")
+
+    # Sample points from stage mesh faces
+
+    pointcloud = sim.sample_points_from_stage()
+    pc = trimesh.Trimesh(pointcloud)
+
+    with open(EXAMPLES_DIR.joinpath("tmesh_pc.obj"), "wb") as f:
+        pc.export(f, file_type="obj")

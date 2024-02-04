@@ -521,6 +521,14 @@ class Simulator {
   std::vector<vec3ui> getStageMeshFaceIdxs();
 
   /**
+   * @brief Sample @ref numPoints at random from the mesh faces, with
+   * probability proportional to the area of the face.
+   * @param numPoints The number of points to sample.
+   * @return A std::vector with the indices
+   */
+  std::vector<vec3f> samplePointsFromFaces(size_t numPoints);
+
+  /**
    * @brief Get the joined semantic mesh data for all objects in the scene
    * @param[out] objectIds will be populated with the object ids for the
    * semantic mesh
