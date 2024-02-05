@@ -4,6 +4,7 @@
 
 #include "Simulator.h"
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -945,6 +946,7 @@ std::vector<vec3f> Simulator::samplePointsFromFaces(size_t numPoints) {
   // Step 2: Normalize face areas to obtain probabilities
   std::vector<float> probabilities;
   float totalArea = 0.0f;
+  size_t currFace = 0;
   for (const auto& face : faceIdxs) {
     vec3f v0 = vertices[face[0]];
     vec3f v1 = vertices[face[1]];
@@ -956,29 +958,43 @@ std::vector<vec3f> Simulator::samplePointsFromFaces(size_t numPoints) {
     // Compute the area of the triangle (face)
     float area = normal.norm() / 2.0f;
 
+    ESP_CHECK(
+        area >= 0,
+        Cr::Utility::formatString(
+            "Simulator::samplePointsFromFaces() : Face {} has area {} < 0. "
+            "Aborting",
+            currFace, area));
     probabilities.push_back(area);
     totalArea += area;
+    currFace += 1;
   }
 
-  // Normalize the probabilities
+  // Normalize the probabilities and store the cumulative probabilities
+  // Since no area is negative, we are guaranteed this vector will be sorted
+  float cumulativeProbability = 0.0f;
+  std::vector<float> cumulativeProbabilities;
   for (float& prob : probabilities) {
     prob /= totalArea;
+    cumulativeProbability += prob;
+    cumulativeProbabilities.push_back(cumulativeProbability);
   }
+  ESP_DEBUG() << "The last cumulative probability was" << cumulativeProbability;
 
   // Step 3 and Step 4: Generate random numbers and sample points
+  size_t selectedFace = 0;
   for (int i = 0; i < numPoints; ++i) {
     // Generate a random number between 0 and 1
     float randNum = random_->uniform_float_01();
 
     // Find the face corresponding to the generated random number
-    float cumulativeProbability = 0.0f;
-    size_t selectedFace = 0;
-    for (size_t j = 0; j < probabilities.size(); ++j) {
-      cumulativeProbability += probabilities[j];
-      if (randNum <= cumulativeProbability) {
-        selectedFace = j;
-        break;
-      }
+    auto it = std::lower_bound(cumulativeProbabilities.begin(),
+                               cumulativeProbabilities.end(), randNum);
+    if (it != cumulativeProbabilities.end()) {
+      selectedFace = std::distance(cumulativeProbabilities.begin(), it);
+    } else {
+      // Handle the case when no face is found (should not happen with valid
+      // probabilities). Setting selectedFace to the last face for now.
+      selectedFace = cumulativeProbabilities.size() - 1;
     }
 
     // Sample a point on the selected face
