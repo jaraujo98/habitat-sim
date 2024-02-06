@@ -76,6 +76,8 @@ class HabitatSimInteractiveViewer(Application):
         self.debug_bullet_draw = False
         # draw active contact point debug line visualizations
         self.contact_debug_draw = False
+        # draw point cloud debug line visualizations
+        self.pointcloud_debug_draw = False
         # cache most recently loaded URDF file for quick-reload
         self.cached_urdf = ""
 
@@ -183,6 +185,7 @@ class HabitatSimInteractiveViewer(Application):
             and self.cfg.sim_cfg.scene_id.lower() != "none"
         ):
             self.navmesh_config_and_recompute()
+        self.stage_pointcloud = self.sim.sample_points_from_stage()
 
         self.time_since_last_simulation = 0.0
         LoggingContext.reinitialize_from_env()
@@ -223,6 +226,21 @@ class HabitatSimInteractiveViewer(Application):
                 normal=camera_position - cp.position_on_b_in_ws,
             )
 
+    def draw_pointcloud(self):
+        """
+        This method is called to render a debug line overlay displaying active contact points and normals.
+        Yellow lines show the contact distance along the normal and red lines show the contact normal at a fixed length.
+        """
+        green = mn.Color4.green()
+        camera_position = self.render_camera.render_camera.node.absolute_translation
+        for point in self.stage_pointcloud:
+            self.sim.get_debug_line_render().draw_circle(
+                translation=point,
+                radius=0.005,
+                color=green,
+                normal=camera_position - point,
+            )
+
     def debug_draw(self):
         """
         Additional draw commands to be called during draw_event.
@@ -233,6 +251,8 @@ class HabitatSimInteractiveViewer(Application):
             self.sim.physics_debug_draw(proj_mat)
         if self.contact_debug_draw:
             self.draw_contact_debug()
+        if self.pointcloud_debug_draw:
+            self.draw_pointcloud()
 
     def draw_event(
         self,
@@ -473,6 +493,16 @@ class HabitatSimInteractiveViewer(Application):
 
         elif key == pressed.H:
             self.print_help_text()
+
+        elif key == pressed.P:
+            if shift_pressed:
+                self.stage_pointcloud = self.sim.sample_points_from_stage()
+                logger.info("Command: sampling new point cloud")
+            else:
+                self.pointcloud_debug_draw = not self.pointcloud_debug_draw
+                logger.info(
+                    f"Command: toggle point cloud debug draw: {self.pointcloud_debug_draw}"
+                )
 
         elif key == pressed.TAB:
             # NOTE: (+ALT) - reconfigure without cycling scenes
