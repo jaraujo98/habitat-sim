@@ -4,6 +4,7 @@
 
 #include "Simulator.h"
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -122,8 +123,8 @@ void Simulator::reconfigure(const SimulatorConfiguration& cfg) {
 
   // assign MM to RM on create or reconfigure
   if (!resourceManager_) {
-    resourceManager_ =
-        std::make_unique<assets::ResourceManager>(metadataMediator_);
+    resourceManager_ = std::make_unique<assets::ResourceManager>(
+        metadataMediator_, cfg.randomSeed);
     // needs to be called after ResourceManager exists but before any assets
     // have been loaded
     reconfigureReplayManager(cfg.enableGfxReplaySave);
@@ -914,6 +915,11 @@ assets::MeshData::ptr Simulator::getJoinedMesh(
             "probably due to the current scene being NONE. Aborting");
 
   return joinedMesh;
+}
+
+std::vector<vec3f> Simulator::samplePointsFromObject(std::string key,
+                                                     size_t numPoints) {
+  return resourceManager_->getPointCloud(key, numPoints);
 }
 
 assets::MeshData::ptr Simulator::getJoinedSemanticMesh(

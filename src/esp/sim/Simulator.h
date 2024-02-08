@@ -509,6 +509,14 @@ class Simulator {
   assets::MeshData::ptr getJoinedMesh(bool includeStaticObjects = false);
 
   /**
+   * @brief Get the cached point cloud for the object @ref key
+   * @param key string in the resource dictionary
+   * @param numPoints number of points to sample
+   * @return A shared ptr assets::MeshData with required mesh
+   */
+  std::vector<vec3f> samplePointsFromObject(std::string key, size_t numPoints);
+
+  /**
    * @brief Get the joined semantic mesh data for all objects in the scene
    * @param[out] objectIds will be populated with the object ids for the
    * semantic mesh

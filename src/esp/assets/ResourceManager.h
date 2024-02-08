@@ -19,8 +19,10 @@
 #include <Magnum/Trade/AbstractImporter.h>
 
 #include "Asset.h"
+#include "MeshData.h"
 #include "MeshMetaData.h"
 #include "RigManager.h"
+#include "esp/core/Random.h"
 #include "esp/gfx/Drawable.h"
 #include "esp/gfx/ShaderManager.h"
 #include "esp/gfx/SkinData.h"
@@ -107,6 +109,9 @@ class ResourceManager {
   /** @brief Constructor */
   explicit ResourceManager(
       std::shared_ptr<metadata::MetadataMediator> _metadataMediator);
+  explicit ResourceManager(
+      std::shared_ptr<metadata::MetadataMediator> _metadataMediator,
+      unsigned int rng_seed);
 
   /** @brief Destructor */
   ~ResourceManager();
@@ -631,6 +636,24 @@ class ResourceManager {
    */
   void resetDrawableCountAndNumFaces() { drawableCountAndNumFaces_ = {0, 0}; }
 
+  /**
+   * @brief Sample @ref numPoints at random from the @ref joinedMesh faces, with
+   * probability proportional to the area of the face
+   * @param numPoints The number of points to sample
+   * @param joinedMesh The mesh from which to sample
+   * @return A std::vector with the sampled points
+   */
+  std::vector<vec3f> samplePointsFromFaces(size_t numPoints,
+                                           assets::MeshData::ptr joinedMesh);
+
+  /**
+   * @brief Returns the point cloud associated with object @ref key.
+   * @param key The handle of the object
+   * @param numPoints The number of points to sample
+   *
+   */
+  std::vector<vec3f> getPointCloud(std::string key, size_t numPoints);
+
  private:
   /**
    * @brief Retrieve the appropriate @ref eps::gfx::PbrIBLHelper for the passed
@@ -752,6 +775,8 @@ class ResourceManager {
 
  protected:
   // ======== Structs and Types only used locally ========
+  core::Random::ptr random_;
+
   /**
    * @brief Data for a loaded asset
    *
@@ -1180,6 +1205,11 @@ class ResourceManager {
    */
   std::map<int, std::shared_ptr<BaseMesh>> meshes_;
   std::pair<int, int> drawableCountAndNumFaces_{0, 0};
+
+  /**
+   * @brief The point cloud cached for each loaded asset.
+   */
+  std::map<std::string, std::vector<vec3f>> pointClouds_;
 
   /**
    * @brief The next available unique ID for loaded textures

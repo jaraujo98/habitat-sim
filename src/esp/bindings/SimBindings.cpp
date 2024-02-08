@@ -360,7 +360,11 @@ void initSimBindings(py::module& m) {
           R"(Runtime perf stats are various scalars helpful for troubleshooting runtime perf. These values generally change after every sim step. See also get_runtime_perf_stat_names.)")
       .def("get_debug_line_render", &Simulator::getDebugLineRender,
            pybind11::return_value_policy::reference,
-           R"(Get visualization helper for rendering lines.)");
+           R"(Get visualization helper for rendering lines.)")
+      /* --- Pointclouds API --- */
+      .def("sample_points_from_object", &Simulator::samplePointsFromObject,
+           "obj_string"_a, "num_points"_a = 1000,
+           R"(Sample points from the faces of the specified object.)");
 
   // ==== ReplayRendererConfiguration ====
   py::class_<ReplayRendererConfiguration, ReplayRendererConfiguration::ptr>(
