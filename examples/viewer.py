@@ -185,7 +185,9 @@ class HabitatSimInteractiveViewer(Application):
             and self.cfg.sim_cfg.scene_id.lower() != "none"
         ):
             self.navmesh_config_and_recompute()
-        self.stage_pointcloud = self.sim.sample_points_from_stage()
+        self.stage_pointcloud = self.sim.sample_points_from_object(
+            self.sim.get_stage_initialization_template().collision_asset_handle
+        )
 
         self.time_since_last_simulation = 0.0
         LoggingContext.reinitialize_from_env()
@@ -496,7 +498,9 @@ class HabitatSimInteractiveViewer(Application):
 
         elif key == pressed.P:
             if shift_pressed:
-                self.stage_pointcloud = self.sim.sample_points_from_stage()
+                self.stage_pointcloud = self.sim.sample_points_from_object(
+                    self.sim.get_stage_initialization_template().collision_asset_handle
+                )
                 logger.info("Command: sampling new point cloud")
             else:
                 self.pointcloud_debug_draw = not self.pointcloud_debug_draw

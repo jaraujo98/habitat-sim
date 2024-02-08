@@ -1,7 +1,5 @@
 import pathlib
 
-import trimesh
-
 from habitat_sim.simulator import Simulator
 from habitat_sim.utils.settings import default_sim_settings, make_cfg
 
@@ -10,9 +8,10 @@ DATA_DIR = EXAMPLES_DIR.parent.joinpath("data")
 
 
 if __name__ == "__main__":
-    default_sim_settings["scene"] = DATA_DIR.joinpath(
-        "versioned_data", "habitat_test_scenes", "van-gogh-room.glb"
+    default_sim_settings["scene_dataset_config_file"] = DATA_DIR.joinpath(
+        "versioned_data", "replica_cad_dataset", "replicaCAD.scene_dataset_config.json"
     ).as_posix()
+    default_sim_settings["scene"] = "apt_1"
 
     cfg = make_cfg(default_sim_settings)
     sim = Simulator(cfg)
@@ -34,19 +33,6 @@ if __name__ == "__main__":
     # to be included in the stage mesh returned below
     sphere_obj = rigid_obj_mgr.add_object_by_template_id(sphere_template_id)
 
-    # Get stage mesh
-    verts = sim.get_stage_mesh_vertices()
-    faces = sim.get_stage_mesh_face_idxs()
-
-    mesh = trimesh.Trimesh(verts, faces)
-
-    with open(EXAMPLES_DIR.joinpath("tmesh.glb"), "wb") as f:
-        mesh.export(f, file_type="glb")
-
-    # Sample points from stage mesh faces
-
-    pointcloud = sim.sample_points_from_stage()
-    pc = trimesh.Trimesh(pointcloud)
-
-    with open(EXAMPLES_DIR.joinpath("tmesh_pc.obj"), "wb") as f:
-        pc.export(f, file_type="obj")
+    points = sim.sample_points_from_object(
+        sim.get_stage_initialization_template().collision_asset_handle
+    )

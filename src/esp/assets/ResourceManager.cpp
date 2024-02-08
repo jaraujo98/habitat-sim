@@ -113,8 +113,10 @@ using Mn::Trade::MaterialAttribute;
 namespace assets {
 
 ResourceManager::ResourceManager(
-    metadata::MetadataMediator::ptr _metadataMediator)
-    : metadataMediator_(std::move(_metadataMediator))
+    metadata::MetadataMediator::ptr _metadataMediator,
+    unsigned int rng_seed)
+    : metadataMediator_(std::move(_metadataMediator)),
+      random_{core::Random::create(rng_seed)}
 #ifdef MAGNUM_BUILD_STATIC
       ,
       // avoid using plugins that might depend on different library versions
@@ -126,6 +128,10 @@ ResourceManager::ResourceManager(
   // appropriately configure importerManager_ based on compilation flags
   buildImporters();
 }
+
+ResourceManager::ResourceManager(
+    metadata::MetadataMediator::ptr _metadataMediator)
+    : ResourceManager(std::move(_metadataMediator), 0) {}
 
 ResourceManager::~ResourceManager() = default;
 
@@ -3638,6 +3644,107 @@ std::unique_ptr<MeshData> ResourceManager::createJoinedSemanticCollisionMesh(
   joinSemanticHierarchy(*mesh, objectIds, metaData, metaData.root, identity);
 
   return mesh;
+}
+
+std::vector<vec3f> ResourceManager::samplePointsFromFaces(
+    size_t numPoints,
+    assets::MeshData::ptr joinedMesh) {
+  std::vector<vec3f> sampledPoints;
+
+  std::vector<vec3f> vertices = joinedMesh->vbo;
+  std::vector<vec3ui> faceIdxs{};
+  for (size_t ix = 0; ix < joinedMesh->ibo.size() / 3; ++ix) {
+    vec3ui face{joinedMesh->ibo[3 * ix], joinedMesh->ibo[3 * ix + 1],
+                joinedMesh->ibo[3 * ix + 2]};
+    faceIdxs.push_back(face);
+  }
+
+  // Step 1: Compute the area of each face
+  std::vector<float> probabilities;
+  float totalArea = 0.0f;
+  size_t currFace = 0;
+  for (const auto& face : faceIdxs) {
+    vec3f v0 = vertices[face[0]];
+    vec3f v1 = vertices[face[1]];
+    vec3f v2 = vertices[face[2]];
+
+    // Compute the cross product of two edges to get the face normal
+    auto normal = (v1 - v0).cross(v2 - v0);
+
+    // Compute the area of the triangle (face)
+    float area = normal.norm() / 2.0f;
+
+    ESP_CHECK(
+        area >= 0,
+        Cr::Utility::formatString(
+            "Simulator::samplePointsFromFaces() : Face {} has area {} < 0. "
+            "Aborting",
+            currFace, area));
+    probabilities.push_back(area);
+    totalArea += area;
+    currFace += 1;
+  }
+
+  // Step 2: Normalize face areas to obtain probabilities
+  // Normalize the probabilities and store the cumulative probabilities
+  // Since no area is negative, we are guaranteed this vector will be sorted
+  float cumulativeProbability = 0.0f;
+  std::vector<float> cumulativeProbabilities;
+  for (float& prob : probabilities) {
+    prob /= totalArea;
+    cumulativeProbability += prob;
+    cumulativeProbabilities.push_back(cumulativeProbability);
+  }
+  ESP_DEBUG() << "The last cumulative probability was" << cumulativeProbability;
+
+  // Step 3 and Step 4: Generate random numbers and sample points
+  size_t selectedFace = 0;
+  for (int i = 0; i < numPoints; ++i) {
+    // Generate a random number between 0 and 1
+    float randNum = random_->uniform_float_01();
+
+    // Find the face corresponding to the generated random number
+    auto it = std::lower_bound(cumulativeProbabilities.begin(),
+                               cumulativeProbabilities.end(), randNum);
+    if (it != cumulativeProbabilities.end()) {
+      selectedFace = std::distance(cumulativeProbabilities.begin(), it);
+    } else {
+      // Handle the case when no face is found (should not happen with valid
+      // probabilities). Setting selectedFace to the last face for now.
+      selectedFace = cumulativeProbabilities.size() - 1;
+    }
+
+    // Sample a point on the selected face
+    vec3ui selectedFaceIndices = faceIdxs[selectedFace];
+    vec3f v0 = vertices[selectedFaceIndices[0]];
+    vec3f v1 = vertices[selectedFaceIndices[1]];
+    vec3f v2 = vertices[selectedFaceIndices[2]];
+
+    // Barycentric coordinates
+    float u = random_->uniform_float_01();
+    float v = (1.0f - u) * random_->uniform_float_01();
+
+    // Interpolate to get the sampled point
+    vec3f sampledPoint = (1.0f - u - v) * v0 + u * v1 + v * v2;
+    sampledPoints.push_back(sampledPoint);
+  }
+
+  return sampledPoints;
+}
+
+std::vector<vec3f> ResourceManager::getPointCloud(std::string key,
+                                                  size_t numPoints) {
+  std::vector<vec3f> pointCloud{};
+  auto pointCloudIter = pointClouds_.find(key);
+  if (pointCloudIter != pointClouds_.end()) {
+    pointCloud = pointCloudIter->second;
+  } else {
+    assets::MeshData::ptr joinedMesh = assets::MeshData::create();
+    joinedMesh = createJoinedCollisionMesh(key);
+    pointCloud = samplePointsFromFaces(numPoints, joinedMesh);
+    pointClouds_.emplace(key, pointCloud);
+  }
+  return pointCloud;
 }
 
 }  // namespace assets

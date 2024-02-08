@@ -123,8 +123,8 @@ void Simulator::reconfigure(const SimulatorConfiguration& cfg) {
 
   // assign MM to RM on create or reconfigure
   if (!resourceManager_) {
-    resourceManager_ =
-        std::make_unique<assets::ResourceManager>(metadataMediator_);
+    resourceManager_ = std::make_unique<assets::ResourceManager>(
+        metadataMediator_, cfg.randomSeed);
     // needs to be called after ResourceManager exists but before any assets
     // have been loaded
     reconfigureReplayManager(cfg.enableGfxReplaySave);
@@ -917,102 +917,9 @@ assets::MeshData::ptr Simulator::getJoinedMesh(
   return joinedMesh;
 }
 
-std::vector<vec3f> Simulator::getStageMeshVerts() {
-  assets::MeshData::ptr joinedMesh = getJoinedMesh(true);
-  return joinedMesh->vbo;
-}
-
-std::vector<vec3ui> Simulator::getStageMeshFaceIdxs() {
-  assets::MeshData::ptr joinedMesh = getJoinedMesh(true);
-
-  // Array of vectors to store face vertices
-  std::vector<vec3ui> faceIdxs{};
-  for (size_t ix = 0; ix < joinedMesh->ibo.size() / 3; ++ix) {
-    vec3ui face{joinedMesh->ibo[3 * ix], joinedMesh->ibo[3 * ix + 1],
-                joinedMesh->ibo[3 * ix + 2]};
-    faceIdxs.push_back(face);
-  }
-
-  return faceIdxs;
-}
-
-std::vector<vec3f> Simulator::samplePointsFromFaces(size_t numPoints) {
-  std::vector<vec3f> sampledPoints;
-
-  // Step 1: Compute the area of each face
-  std::vector<vec3ui> faceIdxs = getStageMeshFaceIdxs();
-  std::vector<vec3f> vertices = getStageMeshVerts();
-
-  // Step 2: Normalize face areas to obtain probabilities
-  std::vector<float> probabilities;
-  float totalArea = 0.0f;
-  size_t currFace = 0;
-  for (const auto& face : faceIdxs) {
-    vec3f v0 = vertices[face[0]];
-    vec3f v1 = vertices[face[1]];
-    vec3f v2 = vertices[face[2]];
-
-    // Compute the cross product of two edges to get the face normal
-    auto normal = (v1 - v0).cross(v2 - v0);
-
-    // Compute the area of the triangle (face)
-    float area = normal.norm() / 2.0f;
-
-    ESP_CHECK(
-        area >= 0,
-        Cr::Utility::formatString(
-            "Simulator::samplePointsFromFaces() : Face {} has area {} < 0. "
-            "Aborting",
-            currFace, area));
-    probabilities.push_back(area);
-    totalArea += area;
-    currFace += 1;
-  }
-
-  // Normalize the probabilities and store the cumulative probabilities
-  // Since no area is negative, we are guaranteed this vector will be sorted
-  float cumulativeProbability = 0.0f;
-  std::vector<float> cumulativeProbabilities;
-  for (float& prob : probabilities) {
-    prob /= totalArea;
-    cumulativeProbability += prob;
-    cumulativeProbabilities.push_back(cumulativeProbability);
-  }
-  ESP_DEBUG() << "The last cumulative probability was" << cumulativeProbability;
-
-  // Step 3 and Step 4: Generate random numbers and sample points
-  size_t selectedFace = 0;
-  for (int i = 0; i < numPoints; ++i) {
-    // Generate a random number between 0 and 1
-    float randNum = random_->uniform_float_01();
-
-    // Find the face corresponding to the generated random number
-    auto it = std::lower_bound(cumulativeProbabilities.begin(),
-                               cumulativeProbabilities.end(), randNum);
-    if (it != cumulativeProbabilities.end()) {
-      selectedFace = std::distance(cumulativeProbabilities.begin(), it);
-    } else {
-      // Handle the case when no face is found (should not happen with valid
-      // probabilities). Setting selectedFace to the last face for now.
-      selectedFace = cumulativeProbabilities.size() - 1;
-    }
-
-    // Sample a point on the selected face
-    vec3ui selectedFaceIndices = faceIdxs[selectedFace];
-    vec3f v0 = vertices[selectedFaceIndices[0]];
-    vec3f v1 = vertices[selectedFaceIndices[1]];
-    vec3f v2 = vertices[selectedFaceIndices[2]];
-
-    // Barycentric coordinates
-    float u = random_->uniform_float_01();
-    float v = (1.0f - u) * random_->uniform_float_01();
-
-    // Interpolate to get the sampled point
-    vec3f sampledPoint = (1.0f - u - v) * v0 + u * v1 + v * v2;
-    sampledPoints.push_back(sampledPoint);
-  }
-
-  return sampledPoints;
+std::vector<vec3f> Simulator::samplePointsFromObject(std::string key,
+                                                     size_t numPoints) {
+  return resourceManager_->getPointCloud(key, numPoints);
 }
 
 assets::MeshData::ptr Simulator::getJoinedSemanticMesh(
